@@ -13,11 +13,24 @@ HardwareSerial Serial3(PB_11, PB_10);
 
 int count = 0;
 
+// #define BT_TEST
+
 void setup()
 {
   Serial.begin(19200);
   Serial3.begin(9600);
   pinMode(LED, OUTPUT);
+
+#ifdef BT_TEST
+  while (1)
+  {
+    digitalWrite(LED, LOW);
+    Serial3.println("3200,3210,3222,40,3301,13321,27.90,-1204");
+    delay(100);
+    digitalWrite(LED, HIGH);
+    delay(1900);
+  }
+#endif
 
   while (BMS.begin(BMS_ALERT_PIN, BMS_BOOT_PIN) == 1)
   {
@@ -42,20 +55,21 @@ void setup()
 
   BMS.setTemperatureLimits(-20, 45, 0, 45);
   BMS.setShuntResistorValue(1);
-  BMS.setShortCircuitProtection(14000, 200);         // delay in us
-  BMS.setOvercurrentChargeProtection(8000, 200);     // delay in ms
-  BMS.setOvercurrentDischargeProtection(20000, 320); // delay in ms
-  BMS.setCellUndervoltageProtection(2600, 2);        // delay in s
-  BMS.setCellOvervoltageProtection(3800, 2);         // delay in s
+  BMS.setShortCircuitProtection(200000, 1000);        // delay in us
+  BMS.setOvercurrentChargeProtection(8000, 200);      // delay in ms
+  BMS.setOvercurrentDischargeProtection(100000, 320); // delay in ms
+  BMS.setCellUndervoltageProtection(2800, 2);         // delay in s
+  BMS.setCellOvervoltageProtection(3500, 2);          // delay in s
 
   BMS.setBalancingThresholds(0, 3300, 20); // minIdleTime_min, minCellV_mV, maxVoltageDiff_mV
-  BMS.setIdleCurrentThreshold(100);
+  BMS.setIdleCurrentThreshold(300);
   BMS.enableAutoBalancing();
   Serial.println("Cell_1,Cell_2,Cell_3,Cell_4,Cell_5,Total,Temp,Current");
 }
 
 void loop()
 {
+
   digitalWrite(LED, LOW);
   delay(100);
   digitalWrite(LED, HIGH);
