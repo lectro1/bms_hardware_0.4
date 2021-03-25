@@ -12,8 +12,10 @@ bq769x0 BMS(bq76920, BMS_I2C_ADDRESS); // battery management system object
 HardwareSerial Serial3(PB_11, PB_10);
 
 int count = 0;
+int currentMillis = 0;
 
 // #define BT_TEST
+// #define DEBUG
 
 void setup()
 {
@@ -65,48 +67,132 @@ void setup()
   BMS.setIdleCurrentThreshold(300);
   BMS.enableAutoBalancing();
   Serial.println("Cell_1,Cell_2,Cell_3,Cell_4,Cell_5,Total,Temp,Current");
+  BMS.update();
 }
+
+bool loadStatus = true;
+bool chargeStatus = true;
 
 void loop()
 {
-
-  digitalWrite(LED, LOW);
-  delay(100);
-  digitalWrite(LED, HIGH);
-  BMS.update();
-  // BMS.printRegisters();
-  BMS.enableDischarging();
-  BMS.enableCharging();
-
-  for (int i = 1; i <= 5; i++)
+  if (Serial3.available())
   {
-    Serial.print(BMS.getCellVoltage(i));
-    Serial.print(",");
-    Serial3.print(BMS.getCellVoltage(i));
-    Serial3.print(",");
-    // Serial.print("Cell ");
-    // Serial.print(i);
-    // Serial.print(": ");
-    // Serial.println(BMS.getCellVoltage(i));
+    String inputSerial = Serial3.readStringUntil(';');
+    Serial3.print("- ");
+    if (inputSerial == "LD_0")
+    {
+      Serial3.println("LOAD OFF!");
+      loadStatus = false;
+    }
+    else if (inputSerial == "LD_1")
+    {
+      Serial3.println("LOAD ON!");
+      loadStatus = true;
+    }
+    else if (inputSerial == "CG_1")
+    {
+      Serial3.println("CHARGE ON!");
+      chargeStatus = true;
+    }
+    else if (inputSerial == "CG_0")
+    {
+      Serial3.println("CHARGE OFF!");
+      chargeStatus = false;
+    }
   }
 
-  // Serial.println(BMS.getBatteryVoltage());
-  Serial.print(BMS.getBatteryVoltage());
-  Serial.print(",");
-  Serial3.print(BMS.getBatteryVoltage());
-  Serial3.print(",");
+  if (loadStatus)
+  {
+    BMS.enableDischarging();
+  }
+  else
+  {
+    BMS.disableDischarging();
+  }
 
-  // Serial.print("Temperture: ");
-  // Serial.println(BMS.getTemperatureDegC());
-  Serial.print(BMS.getTemperatureDegC());
-  Serial.print(",");
-  Serial3.print(BMS.getTemperatureDegC());
-  Serial3.print(",");
-  // Serial.print("Current: ");
-  Serial.println(BMS.getBatteryCurrent());
-  Serial3.println(BMS.getBatteryCurrent());
-  // Serial.print("Status: ");
-  // Serial.println(BMS.checkStatus());
+  if (chargeStatus)
+  {
+    BMS.enableCharging();
+  }
+  else
+  {
+    BMS.disableCharging();
+  }
 
-  delay(2500);
+  if (millis() - currentMillis >= 2500)
+  {
+    digitalWrite(LED, LOW);
+    delay(100);
+    digitalWrite(LED, HIGH);
+    BMS.update();
+// BMS.printRegisters();
+#ifndef DEBUG
+    Serial3.println("Cell Voltage:");
+    for (int i = 1; i <= 5; i++)
+    {
+      if (i == 4)
+      {
+        continue;
+      }
+      Serial3.print("   Cell ");
+      if (i == 5)
+      {
+
+        Serial3.print("4");
+      }
+      else
+      {
+
+        Serial3.print(i);
+      }
+      Serial3.print(": ");
+      Serial3.print(float(BMS.getCellVoltage(i)) / 1000);
+      Serial3.println(" V");
+      /* code */
+    }
+    Serial3.print("Total Voltage: ");
+    Serial3.print(float(BMS.getBatteryVoltage()) / 1000);
+    Serial3.println(" V");
+    Serial3.print("Temperature: ");
+    Serial3.print(BMS.getTemperatureDegC());
+    Serial3.println(" °C");
+    Serial3.print("Current: ");
+    Serial3.print(float(BMS.getBatteryCurrent()) / 1000);
+    Serial3.println(" A");
+    Serial3.println("");
+#endif
+
+#ifdef DEBUG
+    for (int i = 1; i <= 5; i++)
+    {
+      Serial.print(BMS.getCellVoltage(i));
+      Serial.print(",");
+      Serial3.print(BMS.getCellVoltage(i));
+      Serial3.print(",");
+      // Serial.print("Cell ");
+      // Serial.print(i);
+      // Serial.print(": ");
+      // Serial.println(BMS.getCellVoltage(i));
+    }
+
+    // Serial.println(BMS.getBatteryVoltage());
+    Serial.print(BMS.getBatteryVoltage());
+    Serial.print(",");
+    Serial3.print(BMS.getBatteryVoltage());
+    Serial3.print(",");
+
+    // Serial.print("Temperture: ");
+    // Serial.println(BMS.getTemperatureDegC());
+    Serial.print(BMS.getTemperatureDegC());
+    Serial.print(",");
+    Serial3.print(BMS.getTemperatureDegC());
+    Serial3.print(",");
+    // Serial.print("Current: ");
+    Serial.println(BMS.getBatteryCurrent());
+    Serial3.println(BMS.getBatteryCurrent());
+    // Serial.print("Status: ");
+    // Serial.println(BMS.checkStatus());
+#endif
+    currentMillis = millis();
+  }
 }
