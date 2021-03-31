@@ -654,6 +654,13 @@ long bq769x0::getBatteryVoltage()
 
 //----------------------------------------------------------------------------
 
+int bq769x0::getMinCellVoltage()
+{
+  return cellVoltages[idCellMinVoltage];
+}
+
+//----------------------------------------------------------------------------
+
 int bq769x0::getMaxCellVoltage()
 {
   return cellVoltages[idCellMaxVoltage];
