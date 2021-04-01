@@ -13,11 +13,28 @@ HardwareSerial Serial3(PB_11, PB_10);
 
 int count = 0;
 int batteryCounter = 0;
-float soc = 0;
+float noob_soc = 0;
 float currentDelta = 0;
 float delta = 0;
 
 int cellVoltages[255];
+
+//*********
+float ocv_lfp[] = { // 100, 95, ..., 0 %
+    3.392, 3.314, 3.309, 3.308, 3.304, 3.296, 3.283, 3.275, 3.271, 3.268, 3.265,
+    3.264, 3.262, 3.252, 3.240, 3.226, 3.213, 3.190, 3.177, 3.132, 2.833};
+
+uint32_t columbCounter_mAs;
+float soc;
+float averageCellVoltage;
+int percent = -1;
+float nominalCapacity_Ah = 45;
+size_t numOcvPoints = sizeof(ocv_lfp) / sizeof(float);
+float *ocv = ocv_lfp;
+
+//*********
+
+void resetSOC(void);
 
 void setup()
 {
@@ -58,6 +75,10 @@ void setup()
   BMS.setIdleCurrentThreshold(300);
   BMS.enableAutoBalancing();
   Serial.println("Cell_1,Cell_2,Cell_3,Cell_4,Cell_5,Total,Temp,Current");
+  BMS.update();
+  averageCellVoltage = (BMS.getBatteryVoltage() / 4.0) / 1000.0f;
+  resetSOC();
+  delay(1000);
 }
 
 void loop()
@@ -112,7 +133,10 @@ void loop()
 
   Serial3.print(totalBatteryVoltage, 3);
   Serial3.print(",");
-  soc = totalBatteryVoltage >= 13.4f ? 100.00 : ((totalBatteryVoltage / 13.4f) * 100.0f);
+  // noob_soc = totalBatteryVoltage >= 13.4f ? 100.00 : ((totalBatteryVoltage / 13.4f) * 100.0f);
+  float batteryCurrent = BMS.getBatteryCurrent() / 1000.0f;
+  columbCounter_mAs += batteryCurrent * 1000;
+  soc = columbCounter_mAs / (nominalCapacity_Ah * 3.6e4F);
   Serial3.print(soc, 2);
   Serial3.print("%,");
   Serial3.print(delta / 1000.0f, 3);
@@ -124,7 +148,6 @@ void loop()
   Serial3.print(BMS.getTemperatureDegC());
   Serial3.print(",");
 
-  float batteryCurrent = BMS.getBatteryCurrent() / 1000.0f;
   Serial3.print(abs(batteryCurrent), 2);
   Serial3.print(",");
   float power = abs(batteryCurrent * totalBatteryVoltage);
@@ -139,5 +162,32 @@ void loop()
   // Serial.print(",");
   // Serial.println(BMS.getBatteryCurrent());
 
-  delay(2500);
+  delay(1000);
+}
+
+void resetSOC()
+{
+  if (percent <= 100 && percent >= 0)
+  {
+    columbCounter_mAs = nominalCapacity_Ah * 3.6e4F * percent;
+  }
+  else
+  {
+    columbCounter_mAs = 0;
+    for (unsigned int i = 0; i < numOcvPoints; i++)
+    {
+      if (ocv[i] <= averageCellVoltage)
+      {
+        if (i == 0)
+        {
+          columbCounter_mAs = nominalCapacity_Ah * 3.6e6F;
+        }
+        else
+        {
+          columbCounter_mAs = nominalCapacity_Ah * 3.6e6F / (numOcvPoints - 1.0) * (numOcvPoints - 1.0 - i + (averageCellVoltage - ocv[i]) / (ocv[i - 1] - ocv[i]));
+        }
+        return;
+      }
+    }
+  }
 }
