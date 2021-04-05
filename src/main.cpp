@@ -11,6 +11,7 @@
 bq769x0 BMS(bq76920, BMS_I2C_ADDRESS); // battery management system object
 HardwareSerial Serial3(PB_11, PB_10);
 
+int currentMillis = 0;
 int count = 0;
 int batteryCounter = 0;
 float noob_soc = 0;
@@ -71,7 +72,7 @@ void setup()
   BMS.setCellUndervoltageProtection(3000, 2);         // delay in s
   BMS.setCellOvervoltageProtection(3400, 2);          // delay in s
 
-  BMS.setBalancingThresholds(0, 3300, 20); // minIdleTime_min, minCellV_mV, maxVoltageDiff_mV
+  BMS.setBalancingThresholds(0, 3350, 20); // minIdleTime_min, minCellV_mV, maxVoltageDiff_mV
   BMS.setIdleCurrentThreshold(300);
   BMS.enableAutoBalancing();
   Serial.println("Cell_1,Cell_2,Cell_3,Cell_4,Cell_5,Total,Temp,Current");
@@ -81,88 +82,132 @@ void setup()
   delay(1000);
 }
 
+bool loadStatus = true;
+bool chargeStatus = true;
+
 void loop()
 {
-
-  digitalWrite(LED, LOW);
-  delay(100);
-  digitalWrite(LED, HIGH);
-  BMS.update();
-  // BMS.printRegisters();
-  BMS.enableDischarging();
-  BMS.enableCharging();
-
-  for (int i = 1; i <= 5; i++)
+  if (Serial3.available())
   {
-    int cellVoltage = BMS.getCellVoltage(i);
-    if (cellVoltage <= 50)
+    String inputSerial = Serial3.readStringUntil(';');
+    if (inputSerial == "LD_0")
     {
-      continue;
+      loadStatus = false;
     }
-    if (currentDelta == 0)
+    else if (inputSerial == "LD_1")
     {
-
-      currentDelta = cellVoltage;
+      loadStatus = true;
     }
-    else
+    else if (inputSerial == "CG_1")
     {
-      delta += abs(currentDelta - cellVoltage);
-      currentDelta = cellVoltage;
+      chargeStatus = true;
     }
-    cellVoltages[batteryCounter] = cellVoltage;
-    batteryCounter += 1;
+    else if (inputSerial == "CG_0")
+    {
+      chargeStatus = false;
+    }
   }
 
-  Serial3.print(batteryCounter);
-  Serial3.print(",");
-
-  for (int i = 0; i < batteryCounter; i++)
+  if (loadStatus)
   {
-    // Serial.print(cellVoltages[i] / 1000.0f, 3);
-    // Serial.print(",");
-    Serial3.print(cellVoltages[i] / 1000.0f, 3);
+    BMS.enableDischarging();
+  }
+  else
+  {
+    BMS.disableDischarging();
+  }
+
+  if (chargeStatus)
+  {
+    BMS.enableCharging();
+  }
+  else
+  {
+    BMS.disableCharging();
+  }
+
+  if (millis() - currentMillis >= 900)
+  {
+    digitalWrite(LED, LOW);
+    delay(100);
+    digitalWrite(LED, HIGH);
+    BMS.update();
+    // BMS.printRegisters();
+    BMS.enableDischarging();
+    BMS.enableCharging();
+
+    for (int i = 1; i <= 5; i++)
+    {
+      int cellVoltage = BMS.getCellVoltage(i);
+      if (cellVoltage <= 50)
+      {
+        continue;
+      }
+      if (currentDelta == 0)
+      {
+
+        currentDelta = cellVoltage;
+      }
+      else
+      {
+        delta += abs(currentDelta - cellVoltage);
+        currentDelta = cellVoltage;
+      }
+      cellVoltages[batteryCounter] = cellVoltage;
+      batteryCounter += 1;
+    }
+
+    Serial3.print(batteryCounter);
     Serial3.print(",");
+
+    for (int i = 0; i < batteryCounter; i++)
+    {
+      // Serial.print(cellVoltages[i] / 1000.0f, 3);
+      // Serial.print(",");
+      Serial3.print(cellVoltages[i] / 1000.0f, 3);
+      Serial3.print(",");
+    }
+
+    batteryCounter = 0;
+
+    delta = delta / 4;
+    currentDelta = 0;
+
+    float totalBatteryVoltage = BMS.getBatteryVoltage() / 1000.0f;
+
+    Serial3.print(totalBatteryVoltage, 3);
+    Serial3.print(",");
+    // noob_soc = totalBatteryVoltage >= 13.4f ? 100.00 : ((totalBatteryVoltage / 13.4f) * 100.0f);
+    float batteryCurrent = BMS.getBatteryCurrent() / 1000.0f;
+    columbCounter_mAs += batteryCurrent * 1000;
+    soc = columbCounter_mAs / (nominalCapacity_Ah * 3.6e4F);
+    Serial3.print(soc, 2);
+    Serial3.print("%,");
+    Serial3.print(delta / 1000.0f, 3);
+    Serial3.print(",");
+    Serial3.print(BMS.getMinCellVoltage() / 1000.0f, 3);
+    Serial3.print(",");
+    Serial3.print(BMS.getMaxCellVoltage() / 1000.0f, 3);
+    Serial3.print(",");
+    Serial3.print(BMS.getTemperatureDegC());
+    Serial3.print(",");
+
+    Serial3.print(abs(batteryCurrent), 2);
+    Serial3.print(",");
+    float power = abs(batteryCurrent * totalBatteryVoltage);
+    Serial3.print(power, 2);
+    Serial3.print(",");
+    Serial3.println(batteryCurrent > 0 ? 1 : batteryCurrent == 0 ? 0
+                                                                 : -1);
+
+    // Serial.print(BMS.getBatteryVoltage()/ 1000.0f, 3);
+    // Serial.print(",");
+    // Serial.print(BMS.getTemperatureDegC());
+    // Serial.print(",");
+    // Serial.println(BMS.getBatteryCurrent());
+
+    currentMillis = millis();
   }
-
-  batteryCounter = 0;
-
-  delta = delta / 4;
-  currentDelta = 0;
-
-  float totalBatteryVoltage = BMS.getBatteryVoltage() / 1000.0f;
-
-  Serial3.print(totalBatteryVoltage, 3);
-  Serial3.print(",");
-  // noob_soc = totalBatteryVoltage >= 13.4f ? 100.00 : ((totalBatteryVoltage / 13.4f) * 100.0f);
-  float batteryCurrent = BMS.getBatteryCurrent() / 1000.0f;
-  columbCounter_mAs += batteryCurrent * 1000;
-  soc = columbCounter_mAs / (nominalCapacity_Ah * 3.6e4F);
-  Serial3.print(soc, 2);
-  Serial3.print("%,");
-  Serial3.print(delta / 1000.0f, 3);
-  Serial3.print(",");
-  Serial3.print(BMS.getMinCellVoltage() / 1000.0f, 3);
-  Serial3.print(",");
-  Serial3.print(BMS.getMaxCellVoltage() / 1000.0f, 3);
-  Serial3.print(",");
-  Serial3.print(BMS.getTemperatureDegC());
-  Serial3.print(",");
-
-  Serial3.print(abs(batteryCurrent), 2);
-  Serial3.print(",");
-  float power = abs(batteryCurrent * totalBatteryVoltage);
-  Serial3.print(power, 2);
-  Serial3.print(",");
-  Serial3.println(batteryCurrent > 0 ? 1 : batteryCurrent == 0 ? 0
-                                                               : -1);
-
-  // Serial.print(BMS.getBatteryVoltage()/ 1000.0f, 3);
-  // Serial.print(",");
-  // Serial.print(BMS.getTemperatureDegC());
-  // Serial.print(",");
-  // Serial.println(BMS.getBatteryCurrent());
-
-  delay(900);
 }
 
 void resetSOC()
