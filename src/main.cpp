@@ -162,7 +162,7 @@ void loop()
   // Serial.print(",");
   // Serial.println(BMS.getBatteryCurrent());
 
-  delay(1000);
+  delay(900);
 }
 
 void resetSOC()
