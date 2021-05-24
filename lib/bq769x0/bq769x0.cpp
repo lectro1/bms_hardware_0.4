@@ -342,6 +342,16 @@ bool bq769x0::enableCharging()
 
 //----------------------------------------------------------------------------
 
+void bq769x0::disableCharging()
+{
+  LOG_PRINTLN("disableCharging");
+  byte sys_ctrl2;
+  sys_ctrl2 = readRegister(SYS_CTRL2);
+  writeRegister(SYS_CTRL2, sys_ctrl2 & ~B00000001); // switch CHG on
+}
+
+//----------------------------------------------------------------------------
+
 bool bq769x0::enableDischarging()
 {
   LOG_PRINTLN("enableDischarging");
@@ -382,6 +392,16 @@ void bq769x0::disableCharging()
   byte sys_ctrl2;
   sys_ctrl2 = readRegister(SYS_CTRL2);
   writeRegister(SYS_CTRL2, sys_ctrl2 & ~B00000001); // switch CHG on
+}
+
+//----------------------------------------------------------------------------
+
+void bq769x0::disableDischarging()
+{
+  LOG_PRINTLN("disableDischarging");
+  byte sys_ctrl2;
+  sys_ctrl2 = readRegister(SYS_CTRL2);
+  writeRegister(SYS_CTRL2, sys_ctrl2 & ~B00000010); // switch DSG off
 }
 
 //----------------------------------------------------------------------------
