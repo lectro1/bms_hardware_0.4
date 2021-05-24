@@ -69,10 +69,10 @@ void setup()
   BMS.setShortCircuitProtection(200000, 1000);        // delay in us
   BMS.setOvercurrentChargeProtection(8000, 200);      // delay in ms
   BMS.setOvercurrentDischargeProtection(100000, 320); // delay in ms
-  BMS.setCellUndervoltageProtection(3000, 2);         // delay in s
-  BMS.setCellOvervoltageProtection(3400, 2);          // delay in s
+  BMS.setCellUndervoltageProtection(2500, 2);         // delay in s
+  BMS.setCellOvervoltageProtection(3650, 2);          // delay in s
 
-  BMS.setBalancingThresholds(0, 3350, 20); // minIdleTime_min, minCellV_mV, maxVoltageDiff_mV
+  BMS.setBalancingThresholds(0, 3450, 20); // minIdleTime_min, minCellV_mV, maxVoltageDiff_mV
   BMS.setIdleCurrentThreshold(300);
   BMS.enableAutoBalancing();
   Serial.println("Cell_1,Cell_2,Cell_3,Cell_4,Cell_5,Total,Temp,Current");
