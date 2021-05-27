@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <HardwareSerial.h>
-#include <bq769x0.h> // Library for Texas Instruments bq76920 battery management IC
+#include "bq769x0.h" // Library for Texas Instruments bq76920 battery management IC
 
 #define BMS_ALERT_PIN PB_12 // attached to interrupt INT0
 #define BMS_BOOT_PIN PC_13  // connected to TS1 input
@@ -132,7 +132,6 @@ void loop()
     delay(100);
     digitalWrite(LED, HIGH);
     BMS.update();
-    // BMS.printRegisters();
     BMS.enableDischarging();
     BMS.enableCharging();
 
@@ -162,8 +161,6 @@ void loop()
 
     for (int i = 0; i < batteryCounter; i++)
     {
-      // Serial.print(cellVoltages[i] / 1000.0f, 3);
-      // Serial.print(",");
       Serial3.print(cellVoltages[i] / 1000.0f, 3);
       Serial3.print(",");
     }
@@ -177,7 +174,6 @@ void loop()
 
     Serial3.print(totalBatteryVoltage, 3);
     Serial3.print(",");
-    // noob_soc = totalBatteryVoltage >= 13.4f ? 100.00 : ((totalBatteryVoltage / 13.4f) * 100.0f);
     float batteryCurrent = BMS.getBatteryCurrent() / 1000.0f;
     columbCounter_mAs += batteryCurrent * 1000;
     soc = columbCounter_mAs / (nominalCapacity_Ah * 3.6e4F);
@@ -199,12 +195,6 @@ void loop()
     Serial3.print(",");
     Serial3.println(batteryCurrent > 0 ? 1 : batteryCurrent == 0 ? 0
                                                                  : -1);
-
-    // Serial.print(BMS.getBatteryVoltage()/ 1000.0f, 3);
-    // Serial.print(",");
-    // Serial.print(BMS.getTemperatureDegC());
-    // Serial.print(",");
-    // Serial.println(BMS.getBatteryCurrent());
 
     currentMillis = millis();
   }
